@@ -1,0 +1,284 @@
+#define Ready 8                 	//defining pins 
+#define Relay 10    
+#define Warning 9
+#define relay2 11  
+#define buttonpin 13
+#define authorise  12 
+char tag1[] ="FE006E04A135"; 		//database of tags feeded
+char tag[]="01002C676B21"; 
+char input[12];        
+int count = 0;  
+int k = 5;
+int t = 4;
+long endTime2;				//defining datatypes for prog 2			
+long elapsedTime;
+long elapsedTime2;
+long startTime;
+long startTime2;
+long endTime;
+long balance = 250;
+long balance2 = 250;
+int buttonstate ;
+int buttonstate2;
+//defining datatypes for prog 3
+long time1;
+long timedone;
+long timeremain1;
+long totaltime1 = 40
+long endTime1;
+boolean match = 0;
+boolean match1 = 0 ;
+boolean secondswipe = 1;      // a datatype to store the current log of the person 
+boolean secondswipe2 = 1;
+boolean swipe1 = 1;
+void setup()
+{
+  Serial.begin(9600);			//setting the baud rate of serial communication
+  pinMode(Ready,OUTPUT);    		// defining the state of pin
+  pinMode(Relay,OUTPUT);
+  pinMode(relay2,OUTPUT); 
+  pinMode(Warning,OUTPUT); 
+  pinMode(buttonpin,OUTPUT);
+  pinMode(authorise,OUTPUT);
+}
+void loop()						// initializing the main program
+{        
+digitalWrite(Ready,HIGH);			// defining the state of output pins
+digitalWrite(buttonpin,HIGH);
+digitalWrite(authorise,HIGH);
+ if(Serial.available())// check serial data ( RFID reader)
+ {  
+buttonstate =digitalRead(buttonpin); 		// condition to jump to program 2
+      if (buttonstate ==LOW)    
+      goto JUMP;  
+      buttonstate2 =digitalRead(authorise); 
+      if (buttonstate2 ==LOW)			// condition to jump to program 3
+      goto label2;   
+digitalWrite(Ready,LOW);
+      count = 0; // Reset the counter to zero
+      /* Keep reading Byte by Byte from the Buffer till the RFID Reader Buffer is empty 
+      or till 12 Bytes (the ID size of our Tag) is read */
+      while(Serial.available() && count < 12) 	//checking whether there is an input
+     {
+      input[count] = Serial.read(); // Read 1 Byte of data and store it in the input[] variable
+      count++; // increment counter
+      delay(5);
+    }
+     /* When the counter reaches 12 (the size of the ID) we stop and compare each value 
+    of the input[] to the corresponding stored value */
+    if(count == 12) 
+    {
+      count =0; 
+      match = 1;
+      /* Iterate through each value and compare till either the 12 values are 
+         all matching or till the first mistmatch occurs */
+      while(count<12 && match !=0)  	//checking the tag with the database of tags 
+      {
+        if((input[count]==tag[count])||(input[count]==tag1[count]))
+        match = 1; // everytime the values match, we set the match variable to 1
+        else
+        match= 0; 
+                               /* if the ID values don't match, set match variable to 0 and 
+                                  stop comparing by exiting the while loop */
+        count++; // increment i
+      }
+    }
+    if(match !=0)
+    {
+count =0;
+while(count<12 && match !=0)
+      {
+         if (input[count]==tag[count])
+    	     match = 1;
+    	  else 
+    	    match = 0;
+    count++;
+    }
+   if(match == 1 && k !=0 ) 
+    {
+      Serial.println("Congratulation Access Allowed to keniz ");
+      digitalWrite(Relay,HIGH);
+      delay (5000);       // Relay on for 5 sec
+      digitalWrite (Relay,LOW);         
+       k--;
+     }
+    count =0;
+    match1 =1;
+     while(count<12 && match1 !=0)
+     {
+         if (input[count]==tag1[count])
+         match1 = 1;
+    else 
+match1 = 0;
+    count++;
+    }
+if(match1 == 1 && t !=0 )	 //  to check the tag used matches with the particular user
+    {
+      Serial.println("Congratulation Access Allowed to karan ");
+      digitalWrite(relay2,HIGH);
+      delay (5000);      				 // Relay on for 5 sec
+      digitalWrite (relay2,LOW);
+ t--;
+    }
+    }
+    else
+    {
+      Serial.println("Access Denied"); 		// Incorrect Tag Message
+      digitalWrite(Warning,HIGH);
+      delay(500);
+      digitalWrite(Warning,LOW);
+    }
+               
+    /* Fill the input variable array with a fixed value 'F' to overwrite 
+    all values getting it empty for the next read cycle */
+    for(count=0; count<12; count++) 
+    {
+      input[count]= 'F';
+    }
+    count = 0; // Reset counter variable
+  }
+
+  
+
+  JUMP:
+     while (buttonstate == LOW && Serial.available() )	// program 2
+      {
+ 	     while(Serial.available() && count < 12) 		// feeding input
+             {
+              input[count] = Serial.read();
+              count++; // increment counter
+              delay(5);
+            }
+            count =0;
+            match =1;
+            while(count<12 && match !=0) 			//comparing the input with database
+                {
+                if (input[count]==tag[count])
+             match = 1;
+    else 
+    match = 0;
+    count++;
+    }
+      if (match !=0 )				// procedure to be followed after match
+         {
+        if (secondswipe !=0)			// if car entering  into premises 
+        {
+                 startTime = millis();
+                 Serial.print("Time started \n");
+           secondswipe=0;
+          }
+         else 						// car exiting from premises 
+        {
+       endTime=millis();
+       elapsedTime =  ( (endTime - startTime)/60000L); 
+       Serial.print( (long)(elapsedTime ));
+       Serial.print("minutes \n");
+       Serial.print((long)(elapsedTime * 5L ));
+      Serial.print("rupees charged \n");
+      Serial.print("total balance remaining is ");
+      balance = balance - (elapsedTime * 5L);
+      Serial.print((long)(balance));
+      Serial.print(" rupees remaining ");     
+       secondswipe=1;
+ }
+     }
+  count =0;
+          match1 =1;
+     while(count<12 && match1 !=0)		//comparing the input with database
+                {
+                if (input[count]==tag1[count])
+    match1 = 1;
+    else 
+    match1 = 0;
+    count++;
+    }
+      if (match1 !=0 )
+         {
+        if (secondswipe2 !=0)			// if car logging into premises 
+        {
+
+        {
+                 startTime2 = millis();
+                 Serial.print("Time started \n");
+           secondswipe2=0;
+               }
+             else 					// if  car logging out of premises 
+        {
+
+        {
+      endTime2=millis();
+       elapsedTime2 =  ( (endTime2 - startTime2)/60000L); 
+       Serial.print( (long)(elapsedTime2 ));
+       Serial.print("minutes \n");
+       Serial.print((long)(elapsedTime2 * 5L ));
+      Serial.print("rupees charged \n");
+      Serial.print("total balance remaining is ");
+      balance2 = balance2 - (elapsedTime2 * 5L);
+      Serial.print((long)(balance2));
+      Serial.print(" rupees remaining ");     
+       secondswipe2=1;
+      }
+    }
+             for(count=0; count<12; count++) 
+    {
+      input[count]= 'F';
+    }
+        count=0;
+       
+  } 								
+  label2: 			// program 3
+  while(Serial.available() && buttonstate2 ==LOW)
+    {
+      while(Serial.available() && count < 12)      		//taking the input feed of tag
+                    {
+            input[count] = Serial.read(); 
+            count++; 
+            delay(5);
+          }
+      count =0;
+      match=1;
+      while(count<12 && match !=0)			// comparing the tag with user feeded
+        {
+          if (input[count]==tag[count])
+          match =1;
+          else
+          match =0;
+          count++;
+        }
+     if (match !=0)					//procedure to be followed after match
+        {
+          if (swipe1 !=0) 				// for person logging in 
+            {
+              time1 = millis();
+              Serial.print("TIME STARTED \n");
+                                 swipe1=0 ;
+            }
+          else 						//for person logging out 
+            { endTime1=millis();
+              timedone = ((endTime1 - time1)/60000L);
+              Serial.print( (long)(timedone));
+              Serial.print (" mins done \r\n");
+              Serial.print ("mins remaining  ");
+              timeremain1 = totaltime1 - (timedone);
+              Serial.print((long)(timeremain1));
+              Serial.print ("mins");
+              swipe1=1;
+            }
+        }
+      else 					// if card doesn’t match with any of the feeded no.
+      {
+      Serial.print("false identity");
+      }
+      for(count=0; count<12; count++) 
+    {
+      input[count]= 'F';
+    }
+              count=0;
+  }						 //program 3 end 
+}
+
+
+
+
+
+
